@@ -239,7 +239,6 @@ SELECT phu, ROUND(AVG(confirmed_active_ltc_resident_cases)) AS avg_ltc_resident_
 WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
 GROUP BY phu
 
-
 #school cases with greater than 10 covid cases by municipality, ordered from highest to lowest
 SELECT municipality, MAX(total_confirmed_cases) AS max_confirmed_cases FROM school_cases
 WHERE total_confirmed_cases >= 10
