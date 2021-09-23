@@ -1,0 +1,263 @@
+#create tables and import data into database
+
+CREATE TABLE Confirmed_Positive_Cases(
+	Row_ID SERIAL PRIMARY KEY,
+	Accurate_Episode_Date DATE,
+	Age_Group VARCHAR(10),
+	Client_Gender VARCHAR(20),
+	Case_AcquisitionInfo VARCHAR(50),
+	Outcome1 VARCHAR(20),
+	Outbreak_Related VARCHAR(10),
+	Reporting_PHU_ID INTEGER,
+	Reporting_PHU VARCHAR(100),
+	Reporting_PHU_City VARCHAR(20),
+	Reporting_PHU_Latitude FLOAT,
+	Reporting_PHU_Longitude FLOAT
+	)
+
+COPY Confirmed_Positive_Cases FROM 'file destination'
+	DELIMITER ',' 
+	CSV HEADER ;
+
+CREATE TABLE LTC_Cases(
+	Report_Data_Extracted DATE,
+	PHU_Num SMALLINT,
+	PHU VARCHAR(100),
+	LTC_Homes_with_Active_Outbreak INTEGER,
+	LTC_Homes_with_Resolved_Outbreak INTEGER,
+	Confirmed_Active_LTC_Resident_Cases INTEGER,
+	Confirmed_Active_LTC_HCW_Cases INTEGER,
+	Total_LTC_Resident_Deaths INTEGER,
+	Total_LTC_HCW_Deaths INTEGER
+	)
+
+COPY LTC_Cases FROM 'file destination'
+	DELIMITER ','
+	CSV HEADER ;
+
+CREATE TABLE Hospital_Cases(
+	date DATE,
+	oh_region VARCHAR(20),
+	icu_current_covid INTEGER,
+	icu_current_covid_vented INTEGER,
+	hospitalizations INTEGER,
+	icu_crci_total INTEGER,
+	icu_crci_total_vented INTEGER,
+	icu_former_covid INTEGER,
+	icu_former_covid_vented INTEGER
+	)
+
+COPY Hospital_Cases FROM 'file destination'
+	DELIMITER ','
+	CSV HEADER ;
+
+CREATE TABLE School_Cases(
+	start_date DATE,
+	end_date DATE,
+	school_board_name VARCHAR(200),
+	school_board_id VARCHAR(10),
+	schools_invited_to_participate INTEGER,
+	new_tests_conducted INTEGER,
+	new_cases_identified INTEGER,
+	cumulative_conducted_tests INTEGER,
+	cumulative_cases_identified INTEGER
+	)
+	
+COPY School_Cases FROM 'file destination'
+	DELIMITER ','
+	CSV HEADER ;
+
+CREATE TABLE Regional_Cases(
+	FILE_DATE DATE,
+	PHU_NAME VARCHAR(200),
+	PHU_NUM INTEGER,
+	ACTIVE_CASES INTEGER,
+	RESOLVED_CASES INTEGER,
+	DEATHS INTEGER
+	)
+
+COPY Regional_Cases FROM 'file destination'
+	DELIMITER ','
+	CSV HEADER ;
+
+CREATE TABLE school_cases(
+	collected_date DATE,
+	school_id INTEGER,
+	school VARCHAR(100),
+	municipality VARCHAR(50),
+	confirmed_student_cases INTEGER,
+	confirmed_staff_cases INTEGER,
+	confirmed_unspecified_cases INTEGER,
+	total_confirmed_cases INTEGER
+	)
+
+COPY school_cases FROM 'file destination'
+	DELIMITER ',' 
+	CSV HEADER ;
+
+#change text in table
+
+UPDATE confirmed_positive_cases
+SET age_group = REPLACE('<20','<20','20s')
+WHERE age_group = '<20'
+
+UPDATE confirmed_positive_cases
+SET case_acquisitioninfo = REPLACE('OB','OB','OUTBREAK')
+WHERE case_acquisitioninfo = 'OB'
+
+UPDATE confirmed_positive_cases
+SET case_acquisitioninfo = REPLACE('CC','CC','Close Contact')
+WHERE case_acquisitioninfo = 'CC'
+
+UPDATE confirmed_positive_cases
+SET case_acquisitioninfo = UPPER(case_acquisitioninfo)
+
+UPDATE confirmed_positive_cases
+SET outcome1 = REPLACE('Not Resolved','Not Resolved','Active')
+WHERE outcome1 = 'Not Resolved'
+
+UPDATE confirmed_positive_cases
+SET outcome1 = UPPER(outcome1)
+
+UPDATE confirmed_positive_cases
+SET outcome1 = UPPER(outcome1)
+
+UPDATE confirmed_positive_cases
+SET outbreak_related = 'No'
+WHERE outbreak_related ISNULL
+
+UPDATE confirmed_positive_cases
+SET outbreak_related = UPPER(outbreak_related)
+
+#remove nulls from table
+DELETE FROM school_cases WHERE municipality IS NULL
+
+#% number of cases grouped by gender ordered from highest to lowest
+SELECT client_gender, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases),2) AS percent
+FROM confirmed_positive_cases
+GROUP BY client_gender
+ORDER BY case_count DESC
+
+#% number of deaths grouped by genders
+SELECT client_gender, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases WHERE outcome1 = 'FATAL'),2) AS percent 
+FROM confirmed_positive_cases
+WHERE outcome1 = 'FATAL'
+GROUP BY client_gender
+ORDER BY case_count DESC
+
+#% number of cases grouped by case acquisition
+SELECT case_acquisitioninfo, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases),2) AS percent
+FROM confirmed_positive_cases
+GROUP BY case_acquisitioninfo
+ORDER BY case_count DESC
+
+#% number of outcomes
+SELECT outcome1, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases),2) AS percent
+FROM confirmed_positive_cases
+GROUP BY outcome1
+ORDER BY outcome1 DESC
+
+#% number related to outbreaks
+SELECT outbreak_related, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases),2) AS percent
+FROM confirmed_positive_cases
+GROUP BY outbreak_related
+
+#% number of deaths by age group
+SELECT age_group, COUNT(*) AS case_count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM confirmed_positive_cases WHERE outcome1 = 'FATAL'),2) AS percent 
+FROM confirmed_positive_cases
+WHERE outcome1 = 'FATAL'
+GROUP BY age_group
+ORDER BY age_group
+
+#number of cases by date
+SELECT accurate_episode_date, COUNT(*) AS case_count
+FROM confirmed_positive_cases
+GROUP BY accurate_episode_date
+ORDER BY case_count DESC
+
+#number of cases by month
+SELECT DATE_TRUNC('month', accurate_episode_date) AS month, COUNT(accurate_episode_date) AS case_count FROM confirmed_positive_cases
+GROUP BY DATE_TRUNC('month', accurate_episode_date)
+ORDER BY case_count DESC
+
+#number of deaths by region
+SELECT DISTINCT(r.phu_name), c.num_deaths
+FROM regional_cases r 
+JOIN
+	(SELECT c.reporting_phu_id, COUNT(*) AS num_deaths
+	 FROM confirmed_positive_cases c
+	 WHERE outcome1 = 'FATAL'
+	 GROUP BY c.reporting_phu_id
+	) c
+ON r.phu_num = c.reporting_phu_id
+ORDER BY num_deaths DESC
+
+#average patients hospitalized with covid by month, ordered from highest to lowest hospitalizations
+SELECT DATE_TRUNC('month', date) AS month, ROUND(AVG(hospitalizations)) AS avg_hospitalizations FROM hospital_cases
+WHERE date BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY DATE_TRUNC('month', date)
+ORDER BY avg_hospitalizations DESC
+
+#average patients in icu with covid and covid related critical illness by month between April 2021-July 2021
+SELECT DATE_TRUNC('month', date) AS month, ROUND(AVG(icu_current_covid)) AS avg_icu_current_covid, ROUND(AVG(icu_crci_total)) AS avg_icu_crci FROM hospital_cases
+WHERE date BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY DATE_TRUNC('month', date)
+ORDER BY month
+
+#maximum number of covid patients in icu on ventilators due to covid or covid-related critical illness by region
+SELECT oh_region, MAX(icu_current_covid_vented) AS max_icu_current_covid_vented, MAX(icu_crci_total_vented) AS max_icu_crci_vented FROM hospital_cases
+GROUP BY oh_region
+
+#top 10 regions with most long term care resident deaths recorded between April 2020-July 2021
+SELECT phu, MAX(total_ltc_resident_deaths) AS max_ltc_resident_deaths FROM ltc_cases
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY phu
+ORDER BY max_ltc_resident_deaths DESC
+LIMIT 10
+
+#top 5 regions with most health care worker deaths in long term care health care residences between April 2020-July 2021
+SELECT phu, MAX(total_ltc_hcw_deaths) AS max_ltc_hcw_deaths FROM ltc_cases
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY phu
+ORDER BY max_ltc_hcw_deaths DESC
+LIMIT 5
+
+#highest number of outbreaks by region between April 2020-July 2021
+SELECT phu, MAX(ltc_homes_with_active_outbreak) AS max_outbreaks FROM ltc_cases
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY phu
+ORDER BY max_outbreaks DESC
+
+#average long term care residents and health care workers cases by month between April 2020-July 2021
+SELECT DATE_TRUNC('month', report_data_extracted) AS month, ROUND(AVG(confirmed_active_ltc_resident_cases)) AS avg_ltc_resident_cases, ROUND(AVG(confirmed_active_ltc_hcw_cases)) AS avg_ltc_hcw_cases FROM ltc_cases
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY DATE_TRUNC('month', report_data_extracted)
+ORDER BY month
+
+#average long term care resident and health care workers cases by phu between April 2020-July 2021
+SELECT phu, ROUND(AVG(confirmed_active_ltc_resident_cases)) AS avg_ltc_resident_cases, ROUND(AVG(confirmed_active_ltc_hcw_cases)) AS avg_ltc_hcw_cases FROM ltc_cases
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+GROUP BY phu
+
+
+#school cases with greater than 10 covid cases by municipality, ordered from highest to lowest
+SELECT municipality, MAX(total_confirmed_cases) AS max_confirmed_cases FROM school_cases
+WHERE total_confirmed_cases >= 10
+GROUP BY municipality
+ORDER BY max_confirmed_cases DESC
+
+#schools with student covid cases by municipality, ordered from highest to lowest
+SELECT municipality, MAX(confirmed_student_cases) AS max_student_cases FROM school_cases
+WHERE confirmed_student_cases > 0
+GROUP BY municipality
+ORDER BY max_student_cases DESC
+
+#schools with staff covid cases by municipality, ordered from highest to lowest
+SELECT municipality, MAX(confirmed_staff_cases) AS max_staff_cases FROM school_cases
+WHERE confirmed_staff_cases > 0
+GROUP BY municipality
+ORDER BY max_staff_cases DESC
+
+
+
+
