@@ -192,15 +192,15 @@ JOIN
 ON r.phu_num = c.reporting_phu_id
 ORDER BY num_deaths DESC
 
-#average patients hospitalized with covid by month, ordered from highest to lowest hospitalizations
+#average patients hospitalized with covid by month, ordered from highest to lowest hospitalizations between April 2020-December 2021
 SELECT DATE_TRUNC('month', date) AS month, ROUND(AVG(hospitalizations)) AS avg_hospitalizations FROM hospital_cases
-WHERE date BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE date BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY DATE_TRUNC('month', date)
 ORDER BY avg_hospitalizations DESC
 
-#average patients in icu with covid and covid related critical illness by month between April 2021-July 2021
+#average patients in icu with covid and covid related critical illness by month between April 2021-December 2021
 SELECT DATE_TRUNC('month', date) AS month, ROUND(AVG(icu_current_covid)) AS avg_icu_current_covid, ROUND(AVG(icu_crci_total)) AS avg_icu_crci FROM hospital_cases
-WHERE date BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE date BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY DATE_TRUNC('month', date)
 ORDER BY month
 
@@ -208,35 +208,35 @@ ORDER BY month
 SELECT oh_region, MAX(icu_current_covid_vented) AS max_icu_current_covid_vented, MAX(icu_crci_total_vented) AS max_icu_crci_vented FROM hospital_cases
 GROUP BY oh_region
 
-#top 10 regions with most long term care resident deaths recorded between April 2020-July 2021
+#top 10 regions with most long term care resident deaths recorded between April 2020-December 2021
 SELECT phu, MAX(total_ltc_resident_deaths) AS max_ltc_resident_deaths FROM ltc_cases
-WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY phu
 ORDER BY max_ltc_resident_deaths DESC
 LIMIT 10
 
-#top 5 regions with most health care worker deaths in long term care health care residences between April 2020-July 2021
+#top 5 regions with most health care worker deaths in long term care health care residences between April 2020-December 2021
 SELECT phu, MAX(total_ltc_hcw_deaths) AS max_ltc_hcw_deaths FROM ltc_cases
-WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY phu
 ORDER BY max_ltc_hcw_deaths DESC
 LIMIT 5
 
-#highest number of outbreaks by region between April 2020-July 2021
+#highest number of outbreaks by region between April 2020-December 2021
 SELECT phu, MAX(ltc_homes_with_active_outbreak) AS max_outbreaks FROM ltc_cases
-WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY phu
 ORDER BY max_outbreaks DESC
 
-#average long term care residents and health care workers cases by month between April 2020-July 2021
+#average long term care residents and health care workers cases by month between April 2020-December 2021
 SELECT DATE_TRUNC('month', report_data_extracted) AS month, ROUND(AVG(confirmed_active_ltc_resident_cases)) AS avg_ltc_resident_cases, ROUND(AVG(confirmed_active_ltc_hcw_cases)) AS avg_ltc_hcw_cases FROM ltc_cases
-WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY DATE_TRUNC('month', report_data_extracted)
 ORDER BY month
 
-#average long term care resident and health care workers cases by phu between April 2020-July 2021
+#average long term care resident and health care workers cases by phu between April 2020-December 2021
 SELECT phu, ROUND(AVG(confirmed_active_ltc_resident_cases)) AS avg_ltc_resident_cases, ROUND(AVG(confirmed_active_ltc_hcw_cases)) AS avg_ltc_hcw_cases FROM ltc_cases
-WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-07-31'
+WHERE report_data_extracted BETWEEN '2020-04-01' AND '2021-12-31'
 GROUP BY phu
 
 #school cases with greater than 10 covid cases by municipality, ordered from highest to lowest
